@@ -5,7 +5,7 @@ const Review = require('../models/Review');
 
 const getPackages = async (req, res) => {
   try {
-    const { destination, budget, petSize, transportType, rating, duration } = req.query;
+    const { destination, budget, petSize, transportType, rating, duration, sortBy } = req.query;
     let query = {};
 
     if (destination) {
@@ -27,10 +27,25 @@ const getPackages = async (req, res) => {
       query.duration = { $regex: duration, $options: 'i' };
     }
 
-    const packages = await Package.find(query);
-    return res.json(packages);
+    let sortOption = {};
+    if (sortBy === 'price_asc') {
+      sortOption.price = 1;
+    } else if (sortBy === 'price_desc') {
+      sortOption.price = -1;
+    } else if (sortBy === 'rating') {
+      sortOption.rating = -1;
+    } else {
+      sortOption.createdAt = -1;
+    }
+
+    const packages = await Package.find(query).sort(sortOption);
+    return res.json({
+      success: true,
+      message: 'Packages fetched successfully',
+      data: packages
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -40,7 +55,7 @@ const getPackageById = async (req, res) => {
   try {
     const packageItem = await Package.findById(req.params.id);
     if (!packageItem) {
-      return res.json({ message: 'Package not found' }, 404);
+      return res.json({ success: false, message: 'Package not found' }, 404);
     }
 
     
@@ -49,11 +64,15 @@ const getPackageById = async (req, res) => {
       .sort({ createdAt: -1 });
 
     return res.json({
-      package: packageItem,
-      reviews
+      success: true,
+      message: 'Package details fetched successfully',
+      data: {
+        package: packageItem,
+        reviews
+      }
     });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 

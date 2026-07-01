@@ -12,6 +12,7 @@ const getAdminStats = async (req, res) => {
     const totalUsers = await User.countDocuments({ role: 'user' });
     const totalBookings = await Booking.countDocuments();
     const totalPackages = await Package.countDocuments();
+    const totalPets = await Pet.countDocuments(); 
     
     
     const bookings = await Booking.find().populate('packageId');
@@ -22,14 +23,51 @@ const getAdminStats = async (req, res) => {
       return sum;
     }, 0);
 
+    
+    const popularPackagesAggregation = await Booking.aggregate([
+      { $group: { _id: '$packageId', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
+    ]);
+    
+    let popularPackageName = 'N/A';
+    if (popularPackagesAggregation.length > 0) {
+      const popPkg = await Package.findById(popularPackagesAggregation[0]._id);
+      if (popPkg) {
+        popularPackageName = popPkg.destination;
+      }
+    }
+
+    
+    const recentBookings = await Booking.find({})
+      .populate('userId', 'name email')
+      .populate('petId')
+      .populate('packageId')
+      .sort({ bookingDate: -1 })
+      .limit(5);
+
+    
+    const recentUsers = await User.find({ role: 'user' })
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
     return res.json({
-      totalUsers,
-      totalBookings,
-      totalPackages,
-      revenue
+      success: true,
+      message: 'Admin statistics fetched successfully',
+      data: {
+        totalUsers,
+        totalBookings,
+        totalPackages,
+        totalPets,
+        revenue,
+        popularPackage: popularPackageName,
+        recentBookings,
+        recentUsers
+      }
     });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -38,9 +76,13 @@ const getAdminStats = async (req, res) => {
 const getUsers = async (req, res) => {
   try {
     const users = await User.find({}).select('-password').sort({ createdAt: -1 });
-    return res.json(users);
+    return res.json({
+      success: true,
+      message: 'Users fetched successfully',
+      data: users
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -50,11 +92,11 @@ const deleteUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.json({ message: 'User not found' }, 404);
+      return res.json({ success: false, message: 'User not found' }, 404);
     }
 
     if (user.role === 'admin') {
-      return res.json({ message: 'Cannot delete admin users' }, 400);
+      return res.json({ success: false, message: 'Cannot delete admin users' }, 400);
     }
 
     
@@ -63,9 +105,12 @@ const deleteUser = async (req, res) => {
     await Review.deleteMany({ userId: user._id });
     
     await user.deleteOne();
-    return res.json({ message: 'User and all related records deleted' });
+    return res.json({
+      success: true,
+      message: 'User account and all related history records deleted successfully'
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -79,9 +124,13 @@ const getAdminBookings = async (req, res) => {
       .populate('packageId')
       .sort({ bookingDate: -1 });
 
-    return res.json(bookings);
+    return res.json({
+      success: true,
+      message: 'All bookings fetched successfully',
+      data: bookings
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -93,7 +142,7 @@ const updateBookingStatus = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
-      return res.json({ message: 'Booking not found' }, 404);
+      return res.json({ success: false, message: 'Booking not found' }, 404);
     }
 
     const oldStatus = booking.bookingStatus;
@@ -115,7 +164,7 @@ const updateBookingStatus = async (req, res) => {
         const pkg = await Package.findById(booking.packageId);
         if (pkg) {
           if (pkg.availableSeats <= 0) {
-            return res.json({ message: 'Cannot reinstate booking: No available seats in package.' }, 400);
+            return res.json({ success: false, message: 'Cannot reinstate booking: No available seats in package.' }, 400);
           }
           pkg.availableSeats -= 1;
           await pkg.save();
@@ -136,9 +185,13 @@ const updateBookingStatus = async (req, res) => {
       .populate('petId')
       .populate('packageId');
 
-    return res.json(populated);
+    return res.json({
+      success: true,
+      message: 'Booking status updated successfully',
+      data: populated
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -148,7 +201,7 @@ const createPackage = async (req, res) => {
   const { destination, description, price, duration, transportType, petSizeAllowed, maximumPets, images, availableSeats } = req.body;
 
   if (!destination || !description || price === undefined || !duration || !transportType || !petSizeAllowed || maximumPets === undefined || availableSeats === undefined) {
-    return res.json({ message: 'Please provide all package details' }, 400);
+    return res.json({ success: false, message: 'Please provide all package details' }, 400);
   }
 
   try {
@@ -166,9 +219,13 @@ const createPackage = async (req, res) => {
     });
 
     const createdPkg = await pkg.save();
-    return res.json(createdPkg, 201);
+    return res.json({
+      success: true,
+      message: 'Travel Package created successfully',
+      data: createdPkg
+    }, 201);
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -180,7 +237,7 @@ const updatePackage = async (req, res) => {
   try {
     const pkg = await Package.findById(req.params.id);
     if (!pkg) {
-      return res.json({ message: 'Package not found' }, 404);
+      return res.json({ success: false, message: 'Package not found' }, 404);
     }
 
     pkg.destination = destination || pkg.destination;
@@ -194,9 +251,13 @@ const updatePackage = async (req, res) => {
     pkg.availableSeats = availableSeats !== undefined ? Number(availableSeats) : pkg.availableSeats;
 
     const updatedPkg = await pkg.save();
-    return res.json(updatedPkg);
+    return res.json({
+      success: true,
+      message: 'Travel Package updated successfully',
+      data: updatedPkg
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -206,7 +267,7 @@ const deletePackage = async (req, res) => {
   try {
     const pkg = await Package.findById(req.params.id);
     if (!pkg) {
-      return res.json({ message: 'Package not found' }, 404);
+      return res.json({ success: false, message: 'Package not found' }, 404);
     }
 
     
@@ -214,9 +275,12 @@ const deletePackage = async (req, res) => {
     await Booking.deleteMany({ packageId: pkg._id });
 
     await pkg.deleteOne();
-    return res.json({ message: 'Package and related bookings/reviews deleted' });
+    return res.json({
+      success: true,
+      message: 'Travel Package and related bookings/reviews deleted successfully'
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -229,9 +293,13 @@ const getAdminReviews = async (req, res) => {
       .populate('packageId', 'destination')
       .sort({ createdAt: -1 });
 
-    return res.json(reviews);
+    return res.json({
+      success: true,
+      message: 'Reviews fetched successfully',
+      data: reviews
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -241,7 +309,7 @@ const deleteAdminReview = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
     if (!review) {
-      return res.json({ message: 'Review not found' }, 404);
+      return res.json({ success: false, message: 'Review not found' }, 404);
     }
 
     const packageId = review.packageId;
@@ -250,9 +318,12 @@ const deleteAdminReview = async (req, res) => {
     
     await updatePackageAverageRating(packageId);
 
-    return res.json({ message: 'Review moderated and removed successfully' });
+    return res.json({
+      success: true,
+      message: 'Review moderated and removed successfully'
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 

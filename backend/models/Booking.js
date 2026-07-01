@@ -9,17 +9,20 @@ const bookingSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: true
   },
   petId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Pet',
-    required: true
+    required: true,
+    index: true
   },
   packageId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Package',
-    required: true
+    required: true,
+    index: true
   },
   bookingDate: {
     type: Date,

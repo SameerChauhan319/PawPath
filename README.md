@@ -100,13 +100,16 @@ PawPath-main/
 │   └── server.js            # Main native HTTP server entry point (Port 5000)
 ├── public/                  # Static assets & index.html template
 ├── src/
-│   ├── PawPaths.jsx         # Integrated React components and client UI views
-│   ├── index.js             # Root render
-│   └── index.css            # Base styles
-├── .env                     # Local environment configurations (ignored from git)
-├── .env.example             # Placeholder environment variables template
-├── LICENSE                  # MIT License details
-└── package.json             # Root npm dependencies and script registry
+│   ├── components/      # Reusable visual components (Navbar, Modal, cards, etc.)
+│   ├── context/         # AuthContext state provider
+│   ├── pages/           # Platform views (Home, Dashboard, Admin, Pets, etc.)
+│   ├── services/        # Fetch API client and endpoint services
+│   ├── index.js         # React root entry point
+│   └── index.css        # Premium global styling system
+├── .env                 # Local environment configurations (ignored from git)
+├── .env.example         # Placeholder environment variables template
+├── LICENSE              # MIT License details
+└── package.json         # Root npm dependencies and script registry
 ```
 
 ---

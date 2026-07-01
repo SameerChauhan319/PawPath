@@ -12,26 +12,26 @@ const protect = async (req, res, next) => {
       
       const user = await User.findById(decoded.id).select('-password');
       if (!user) {
-        return res.json({ message: 'User belonging to this token no longer exists' }, 401);
+        return res.json({ success: false, message: 'User belonging to this token no longer exists' }, 401);
       }
 
       req.user = user;
       await next();
     } catch (error) {
       console.error('JWT verification error:', error.message);
-      return res.json({ message: 'Not authorized, token failed' }, 401);
+      return res.json({ success: false, message: 'Not authorized, token failed' }, 401);
     }
   }
 
   if (!token) {
-    return res.json({ message: 'Not authorized, no token provided' }, 401);
+    return res.json({ success: false, message: 'Not authorized, no token provided' }, 401);
   }
 };
 const adminOnly = async (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     await next();
   } else {
-    return res.json({ message: 'Not authorized as an admin' }, 403);
+    return res.json({ success: false, message: 'Not authorized as an admin' }, 403);
   }
 };
 

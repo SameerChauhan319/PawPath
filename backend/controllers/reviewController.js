@@ -21,26 +21,26 @@ const createReview = async (req, res) => {
   const { packageId, rating, comment } = req.body;
 
   if (!packageId || !rating || !comment) {
-    return res.json({ message: 'Package ID, rating, and comment are required' }, 400);
+    return res.json({ success: false, message: 'Package ID, rating, and comment are required' }, 400);
   }
 
   try {
     
     const travelPackage = await Package.findById(packageId);
     if (!travelPackage) {
-      return res.json({ message: 'Package not found' }, 404);
+      return res.json({ success: false, message: 'Package not found' }, 404);
     }
 
     
     const hasBooked = await Booking.findOne({ userId: req.user._id, packageId });
     if (!hasBooked) {
-      return res.json({ message: 'You must have a booking history with this package to leave a review.' }, 403);
+      return res.json({ success: false, message: 'You must have a booking history with this package to leave a review.' }, 403);
     }
 
     
     const alreadyReviewed = await Review.findOne({ userId: req.user._id, packageId });
     if (alreadyReviewed) {
-      return res.json({ message: 'You have already reviewed this package. Please edit your existing review instead.' }, 400);
+      return res.json({ success: false, message: 'You have already reviewed this package. Please edit your existing review instead.' }, 400);
     }
 
     const review = new Review({
@@ -55,9 +55,13 @@ const createReview = async (req, res) => {
     
     await updatePackageAverageRating(packageId);
 
-    return res.json(createdReview, 201);
+    return res.json({
+      success: true,
+      message: 'Review submitted successfully',
+      data: createdReview
+    }, 201);
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -70,12 +74,12 @@ const updateReview = async (req, res) => {
     const review = await Review.findById(req.params.id);
 
     if (!review) {
-      return res.json({ message: 'Review not found' }, 404);
+      return res.json({ success: false, message: 'Review not found' }, 404);
     }
 
     
     if (review.userId.toString() !== req.user._id.toString()) {
-      return res.json({ message: 'Not authorized to edit this review' }, 403);
+      return res.json({ success: false, message: 'Not authorized to edit this review' }, 403);
     }
 
     review.rating = rating !== undefined ? Number(rating) : review.rating;
@@ -87,9 +91,13 @@ const updateReview = async (req, res) => {
     
     await updatePackageAverageRating(review.packageId);
 
-    return res.json(updatedReview);
+    return res.json({
+      success: true,
+      message: 'Review updated successfully',
+      data: updatedReview
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
@@ -100,12 +108,12 @@ const deleteReview = async (req, res) => {
     const review = await Review.findById(req.params.id);
 
     if (!review) {
-      return res.json({ message: 'Review not found' }, 404);
+      return res.json({ success: false, message: 'Review not found' }, 404);
     }
 
     
     if (review.userId.toString() !== req.user._id.toString()) {
-      return res.json({ message: 'Not authorized to delete this review' }, 403);
+      return res.json({ success: false, message: 'Not authorized to delete this review' }, 403);
     }
 
     const packageId = review.packageId;
@@ -114,9 +122,12 @@ const deleteReview = async (req, res) => {
     
     await updatePackageAverageRating(packageId);
 
-    return res.json({ message: 'Review deleted successfully' });
+    return res.json({
+      success: true,
+      message: 'Review deleted successfully'
+    });
   } catch (error) {
-    return res.json({ message: error.message }, 500);
+    return res.json({ success: false, message: error.message }, 500);
   }
 };
 
